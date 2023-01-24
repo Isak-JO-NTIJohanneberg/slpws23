@@ -5,5 +5,10 @@ require 'bcrypt'
 require "sinatra/reloader"
 
 get('/') do
-    slim(:hej)
+    slim(:main)
+end
+
+
+get('/annonser') do
+    slim(:index)
 end
