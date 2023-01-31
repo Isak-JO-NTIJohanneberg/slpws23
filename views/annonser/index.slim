@@ -1,3 +1,10 @@
-p saab
+h2 Annnonser:
 
-h3 = result
+
+ol
+  - result.each do |result|
+    a href="/annonser/#{result["id"]}"  rubrik: #{result["rubrik"]}
+    br/
+      
+      
+            

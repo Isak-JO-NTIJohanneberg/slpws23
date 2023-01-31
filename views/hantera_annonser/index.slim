@@ -1,0 +1,13 @@
+a href="/annonser/new" Lägg till ny annons
+
+h3 Dina Annonser:
+
+ol
+  - result.each do |result|
+    a href="/annonser/#{result["id"]}"  rubrik: #{result["rubrik"]}
+    form method="post" action="../annonser/#{result["id"]}/delete"
+        input type="submit" value="Ta bort"
+    form method="get" action="../annonser/#{result["id"]}/edit"
+        input type="submit" value="Redigera"
+    br/
+      
