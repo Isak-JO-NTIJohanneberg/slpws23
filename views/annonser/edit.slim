@@ -2,3 +2,23 @@ p = result
 
 
 p här ska det vara ett ifyllt formulär
+
+h2 Redigera Annons
+
+form action="/annonser/#{result["id"]}/update" method="POST" enctype="multipart/form-data"
+    input type="text" name="titel" placeholder="Rubrik" value=result["rubrik"]
+    input type="Number" name="pris" placeholder="Pris" value=result["pris"]
+    select type="operator" name="kattegori"
+        - @kattegorier.each do |result2|
+            - if result2["id"] == result["kattegori_id"]
+                option[value=result2["id"] selected] #{result2["namn"]}
+
+            - else
+                 option value=result2["id"] #{result2["namn"]}
+
+    input type="Annonstext" Name="text" placeholder="annonstext" value=result["annons_text"]
+    label for="bilden" byt till en annan bild:
+    input type="file" name="bilden" value="välj en bild" accept=".png, .jpeg, .jpg, .gif, .svg"
+
+
+    input type="submit" value="Redigera annonsen!"  

@@ -1,15 +1,15 @@
 h2 Ny Annons
 
-form action="/annonser" method="POST"
+form action="/annonser" method="POST" enctype="multipart/form-data"
     input type="text" name="titel" placeholder="Rubrik"
     input type="Number" name="pris" placeholder="Pris"
-    select type="operator" name="kategori"
-        option value="1" bil
-        option value="annat" -
-        option value="*" * 
-        option value="/" #{"/"} 
+    select type="operator" name="kattegori"      
+        - result.each do |result|
+            option value=result["id"] #{result["namn"]}
+
+
     input type="Annonstext" Name="text" placeholder="annonstext"
-    input type="file" name="bilden" value="välj en bild"
+    input type="file" name="bilden" value="välj en bild" accept=".png, .jpeg, .jpg, .gif, .svg"
 
 
     input type="submit" value="Lägg in annons!"  

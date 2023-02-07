@@ -17,7 +17,11 @@ get('/annonser/') do
 end
 
 get('/annonser/new') do
-    slim(:"annonser/new")
+    
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.results_as_hash = true
+    result = db.execute("SELECT * FROM Kattegorier")
+    slim(:"annonser/new", locals:{result:result})
 end
 
 get('/annonser/:id') do
@@ -45,11 +49,20 @@ post('/annonser') do
     pris = params[:pris].to_i
     annonstext = params[:text]
     kattegori = params[:kattegori].to_i
+    bild_filnamn = params[:bilden][:filename]
     user_id = 2
+    bild_fil = params[:bilden][:tempfile]
     
     db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("INSERT INTO Annonser (rubrik, pris, annons_text, user_owner_id, kattegori_id) VALUES (?,?,?,?,?)", rubrik, pris, annonstext, user_id, kattegori)
+    db.execute("INSERT INTO Annonser (rubrik, pris, annons_text, user_owner_id, kattegori_id, bild) VALUES (?,?,?,?,?,?)", rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)  
+        
+    File.open("./public/user_bilder/#{bild_filnamn}", 'wb') do |f|
+        f.write(bild_fil.read)
+    end
+
     redirect("/annonser/")
+
+
 end
 
 post('/annonser/:id/delete') do
@@ -64,6 +77,35 @@ get('/annonser/:id/edit') do
     id = params[:id].to_i
     db = SQLite3::Database.new("db/AD_DATA.db")
     db.results_as_hash = true
-    result = db.execute("SELECT * FROM Annonser WHERE id = ?", id)
-    slim(:"annonser/edit", locals:{result:result})
+    result = db.execute("SELECT * FROM Annonser WHERE id = ?", id).first
+    @kattegorier = db.execute("SELECT * FROM Kattegorier")
+
+    slim(:"annonser/edit",locals:{result:result})
+end
+
+
+post('/annonser/:id/update') do
+    id = params[:id]
+    rubrik = params[:titel]
+    pris = params[:pris].to_i
+    annonstext = params[:text]
+    kattegori = params[:kattegori].to_i
+    user_id = 2
+
+    if  params[:bilden] != nil
+        bild_filnamn = params[:bilden][:filename]
+        bild_fil = params[:bilden][:tempfile]
+        
+        File.open("./public/user_bilder/#{bild_filnamn}", 'wb') do |f|
+            f.write(bild_fil.read)
+        end
+    end
+
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
+        
+ 
+
+
+    redirect("/mina_annonser/")
 end
