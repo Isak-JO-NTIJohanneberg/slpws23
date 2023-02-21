@@ -42,7 +42,7 @@ end
 get('/mina_annonser/') do
     db = SQLite3::Database.new("db/AD_DATA.db")
     db.results_as_hash = true
-    result = db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:id])
+    result = db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
     slim(:"hantera_annonser/index", locals:{result:result})
 end
 
@@ -163,8 +163,6 @@ get('/anvandare/login/') do
     slim(:"anvandare/login")
 end
 
-
-
 post('/anvandare/login') do
 
     user_name = params[:user_name]
@@ -176,11 +174,12 @@ post('/anvandare/login') do
     result = db.execute("SELECT * FROM Anvandare WHERE anv_namn = ?", user_name).first
     psw_krypterad = result["losenord"]
     id = result["id"]
-    @id = id
+    p id
+    session[:anv_id] = id
 
     if password_okrypterat=BCrypt::Password.new(psw_krypterad) == password
   
-      session[:anv_id] = id
+      p "användarid: #{session[:anv_id]}"
   
       redirect('/annonser/')
   
