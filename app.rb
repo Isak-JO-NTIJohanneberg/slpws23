@@ -3,6 +3,7 @@ require 'slim'
 require 'sqlite3'
 require 'bcrypt'
 require "sinatra/reloader"
+require 'sinatra/flash' 
 
 enable :sessions
 
@@ -10,6 +11,13 @@ get('/') do
     slim(:main)
 end
 
+
+#before do
+ #   db = SQLite3::Database.new("db/AD_DATA.db")
+  #  db.results_as_hash = true
+   # result = db.execute("SELECT DISTINCT User_owner_id, id FROM Annonser where id = ?", ?=params )
+#end
+   
 
 get('/annonser/') do
     db = SQLite3::Database.new("db/AD_DATA.db")
@@ -34,11 +42,6 @@ get('/annonser/:id') do
     slim(:"annonser/show",locals:{result:result})
 end
 
-get('/sparade/') do
-    slim(:"sparade/index")
-end
-
-
 get('/mina_annonser/') do
     db = SQLite3::Database.new("db/AD_DATA.db")
     db.results_as_hash = true
@@ -51,7 +54,7 @@ post('/annonser') do
     pris = params[:pris].to_i
     annonstext = params[:text]
     kattegori = params[:kattegori].to_i
-    user_id =  session[:id]
+    user_id =  session[:anv_id]
 
     p user_id
     
@@ -74,10 +77,15 @@ post('/annonser') do
 
 end
 
-post('/annonser/:id/delete') do
+post('/annonser/:id/delete') do    
     id = params[:id].to_i
     db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("DELETE FROM Annonser WHERE id = ?", id)
+    if session[:anv_id] == db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+        db.execute("DELETE FROM Annonser WHERE id = ?", id)
+    else
+        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
+        redirect("/")
+    end
     redirect("/mina_annonser/")
 end
 
@@ -88,20 +96,24 @@ get('/annonser/:id/edit') do
     db.results_as_hash = true
     result = db.execute("SELECT * FROM Annonser WHERE id = ?", id).first
     @kattegorier = db.execute("SELECT * FROM Kattegorier")
-
-    slim(:"annonser/edit",locals:{result:result})
+    if session[:anv_id] == db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+        slim(:"annonser/edit",locals:{result:result})
+    else
+        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
+        redirect("/")
+    end
 end
 
 
 
 
 post('/annonser/:id/update') do
-    id = params[:id]
+    id = params[:id].to_i
     rubrik = params[:titel]
     pris = params[:pris].to_i
     annonstext = params[:text]
     kattegori = params[:kattegori].to_i
-    user_id = session[:id]
+    user_id = session[:anv_id]
 
     if  params[:bilden] != nil
         bild_filnamn = params[:bilden][:filename]
@@ -111,16 +123,30 @@ post('/annonser/:id/update') do
             f.write(bild_fil.read)
         end
     end
-
+    
     db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
-        
- 
+    db.results_as_hash = true
 
+    p db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
-    redirect("/mina_annonser/")
+    if session[:anv_id] == db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+        db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
+        redirect("/mina_annonser/")
+    else
+        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
+        redirect("/")
+    end
+
 end
 
+
+post('/annonser/:id/spara') do
+    annons_id = params[:id].to_i
+    anv_id = session[:anv_id]
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.execute("INSERT INTO User_saved_relation (anv_id, annons_id) VALUES (?,?)", anv_id, annons_id)
+    redirect("/sparade/")
+end
 
 get('/anvandare/new/') do
     slim(:"anvandare/register")
@@ -158,9 +184,27 @@ get('/anvandare/success') do
 
 end
 
+get('/sparade/') do
+
+    anv_id = session[:anv_id]
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.results_as_hash = true
+    result = db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
+
+    slim(:"sparade/index", locals:{result:result})
+
+        
+end
 
 get('/anvandare/login/') do
     slim(:"anvandare/login")
+end
+
+get('/anvandare/logout/') do
+    session.destroy
+    flash[:notice] = "Du har loggat ut!"
+
+    redirect('/anvandare/login/')
 end
 
 post('/anvandare/login') do

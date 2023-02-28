@@ -1,6 +1,8 @@
 h2 = result
 
 h3 rubrik: #{result["rubrik"]}
+form method="post" action="../annonser/#{result["id"]}/spara"
+        input type="submit" value="Spara i favoritlistan"
 - if result["bild"] != nil
     img src="/user_bilder/#{result["bild"]}" alt="annons-foto" width="400px"
 

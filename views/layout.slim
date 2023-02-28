@@ -7,13 +7,19 @@ html lang="sv"
     Annonssidan
   body
 
-    session[:anv_id]
+    - if flash[:notice]
+      p.notice = flash[:notice]
+    p du är inloggad som användare med id: #{session[:anv_id]}
     nav
         a href="/" Hem
         a href="/annonser/" Visa annonser
         a href="/sparade/" sparade annonser
         a href="/mina_annonser/" Hantera annonser
-        a href="/anvandare/login/" Logga in
+        -if session[:anv_id] == nil
+          a href="/anvandare/login/" Logga in
+        -else
+          a href="/anvandare/logout/" Logga ut
+        end
         a href="/anvandare/new/" Skapa konto
 
 
