@@ -1,10 +1,30 @@
 h2 = result
 
 h3 rubrik: #{result["rubrik"]}
-form method="post" action="../annonser/#{result["id"]}/spara"
+
+- sparad = false
+
+- @anv_sparade.each do |sparad_id|
+    -if sparad_id["annons_id"] == result["id"]
+
+        form method="post" action="../annonser/#{result["id"]}/rm_fav"
+            input type="submit" value="Ta bort från favoritlistan"
+        - sparad = true
+
+
+-if sparad == false
+
+    form method="post" action="../annonser/#{result["id"]}/spara"
         input type="submit" value="Spara i favoritlistan"
+
+h5 Sparad av #{@antal_lajks["COUNT (Annons_id)"]} användare
+
+br
+
 - if result["bild"] != nil
     img src="/user_bilder/#{result["bild"]}" alt="annons-foto" width="400px"
 
 - else
     img src="/no_image.png" alt="annons-foto" width="400px"
+
+
