@@ -4,12 +4,13 @@ h3 rubrik: #{result["rubrik"]}
 
 - sparad = false
 
-- @anv_sparade.each do |sparad_id|
-    -if sparad_id["annons_id"] == result["id"]
+- if session[:anv_id] != nil
+    - @anv_sparade.each do |sparad_id|
+        -if sparad_id["annons_id"] == result["id"]
 
-        form method="post" action="../annonser/#{result["id"]}/rm_fav"
-            input type="submit" value="Ta bort från favoritlistan"
-        - sparad = true
+            form method="post" action="../annonser/#{result["id"]}/rm_fav"
+                input type="submit" value="Ta bort från favoritlistan"
+            - sparad = true
 
 
 -if sparad == false

@@ -17,10 +17,12 @@ html lang="sv"
         a href="/mina_annonser/" Hantera annonser
         -if session[:anv_id] == nil
           a href="/anvandare/login/" Logga in
+          a href="/anvandare/new/" Skapa konto
         -else
+          a href="/anvandare/#{session[:anv_id]}/edit/" Redigera Kontot
           a href="/anvandare/logout/" Logga ut
         end
-        a href="/anvandare/new/" Skapa konto
+        
 
 
     == yield

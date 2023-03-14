@@ -39,16 +39,28 @@ get('/annonser/:id') do
     db = SQLite3::Database.new("db/AD_DATA.db")
     db.results_as_hash = true
     result = db.execute("SELECT * FROM Annonser WHERE id = ?",id).first
-    @anv_sparade = db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
+    if session[:anv_id] != nil
+        @anv_sparade = db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
+    end
     @antal_lajks = db.execute("SELECT COUNT (Annons_id) FROM User_saved_relation WHERE Annons_id = ?", id).first
     slim(:"annonser/show", locals:{result:result})
 end
 
 get('/mina_annonser/') do
+
+
+    if session[:anv_id] != nil
+            
     db = SQLite3::Database.new("db/AD_DATA.db")
     db.results_as_hash = true
     result = db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
     slim(:"hantera_annonser/index", locals:{result:result})
+
+    else
+
+        flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
+        redirect back
+    end
 end
 
 post('/annonser') do
@@ -141,15 +153,56 @@ post('/annonser/:id/update') do
 
 end
 
+post('/anvandare/:id/update') do
+
+    if session[:anv_id] == params[:id]
+
+
+        id = session[:anv_id]
+            
+        user_name = params[:user_name]
+        tel_nr = params[:tel_nr].to_i
+        password = params[:password]
+
+        
+
+
+        db = SQLite3::Database.new("db/AD_DATA.db")
+        db.results_as_hash = true
+        psw_krypterad = db.execute("SELECT DISTINCT Losenord FROM Anvandare WHERE id = ?", id).first["losenord"]
+
+        if params[:password] == params[:password2] && password_okrypterat=BCrypt::Password.new(psw_krypterad) == params[:gamla_password]
+
+            password_krypterat=BCrypt::Password.create(password)
+            db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, losenord=? WHERE id=?", user_name, tel_nr, password_krypterat, id)  
+            
+        end
+    end
+    redirect("/")
+
+
+
+end
+
+
 
 post('/annonser/:id/spara') do
-    annons_id = params[:id].to_i
-    anv_id = session[:anv_id]
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("INSERT INTO User_saved_relation (anv_id, annons_id) VALUES (?,?)", anv_id, annons_id)
-    redirect("/annonser/#{annons_id}")
-    flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
-    redirect back
+
+    if session[:anv_id] != nil
+   
+
+        annons_id = params[:id].to_i
+        anv_id = session[:anv_id]
+        p anv_id
+        db = SQLite3::Database.new("db/AD_DATA.db")
+        db.execute("INSERT INTO User_saved_relation (anv_id, annons_id) VALUES (?,?)", anv_id, annons_id)
+        redirect("/annonser/#{annons_id}")
+        redirect back
+    else
+
+        flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
+        redirect back
+    end
 end
 
 post('/annonser/:id/rm_fav') do
@@ -198,18 +251,40 @@ end
 
 get('/sparade/') do
 
-    anv_id = session[:anv_id]
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
+    if session[:anv_id] != nil
 
-    slim(:"sparade/index", locals:{result:result})
+        anv_id = session[:anv_id]
+        db = SQLite3::Database.new("db/AD_DATA.db")
+        db.results_as_hash = true
+        result = db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
+
+        slim(:"sparade/index", locals:{result:result})
+            
+    else
+
+        flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
+        redirect back
+    end
 
         
 end
 
 get('/anvandare/login/') do
     slim(:"anvandare/login")
+end
+
+get('/anvandare/:id/edit/') do
+    id = params[:id].to_i
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.results_as_hash = true
+    result = db.execute("SELECT DISTINCT anv_namn, kontakt_upg FROM Anvandare WHERE id = ?", id).first
+
+    if session[:anv_id] == id
+        slim(:"anvandare/edit",locals:{result:result})
+    else
+        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
+        redirect("/")
+    end
 end
 
 get('/anvandare/logout/') do
@@ -237,7 +312,7 @@ post('/anvandare/login') do
   
       p "användarid: #{session[:anv_id]}"
   
-      redirect('/annonser/')
+      redirect back
   
   
   

@@ -1,0 +1,23 @@
+p = result
+
+
+
+h2 Redigera Användarkonto
+
+form action="/anvandare/#{session[:anv_id]}/update" method="POST" enctype="multipart/form-data"
+    input type="text" name="user_name" placeholder="Användarnamn" value=result["anv_namn"]
+    input type="Number" name="tel_nr" placeholder="kontaktupgifter-telefonnummer" value=result["kontakt_upg"]
+
+
+    input type="password" name="gamla_password" placeholder="Fyll i lösenord"
+
+    h4 Byt lösenord:
+
+    input type="password" name="password" placeholder="välj ett lösenord"
+    input type="password" name="password2" placeholder="Bekräfta nya lösenordet"
+
+    br/
+
+    br
+
+    input type="submit" value="Redigera Kontot"  
