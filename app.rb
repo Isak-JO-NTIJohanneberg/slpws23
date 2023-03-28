@@ -220,25 +220,50 @@ end
 
 post('/anvandare') do
 
-    if params[:password] == params[:password2]
+    if params[:password] == params[:password2] 
+
+        db = SQLite3::Database.new("db/AD_DATA.db")
+        db.results_as_hash = true
 
         user_name = params[:user_name]
         tel_nr = params[:tel_nr].to_i
         password = params[:password]
 
-        password_krypterat=BCrypt::Password.create(password)
+        i = 0
+
+        anv_exists = nil
+        
+        p db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
 
 
-        db = SQLite3::Database.new("db/AD_DATA.db")
-        db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)  
+        while anv_exists == nil && i < db.execute("SELECT COUNT (id) FROM Anvandare").first["COUNT (id)"]
+        
+            anv_exists = db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
 
-        redirect("/anvandare/success/")
+            i += 1
 
+        end
+
+        if anv_exists == nil
+
+
+            db = SQLite3::Database.new("db/AD_DATA.db")
+            db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)  
+
+        else
+        
+
+            flash[:notice] = "Det användarnamnet är redan upptaget."
+            redirect back
+
+        end
+    
+            
 
     else
         
-        redirect("/ajajaj, nu blev det fel här/")
-
+        flash[:notice] = "Du angav fel lösenord."
+        redirect back
         
     end
 end
@@ -303,24 +328,32 @@ post('/anvandare/login') do
     db = SQLite3::Database.new("db/AD_DATA.db")
     db.results_as_hash = true
     result = db.execute("SELECT * FROM Anvandare WHERE anv_namn = ?", user_name).first
-    psw_krypterad = result["losenord"]
-    id = result["id"]
-    p id
-    session[:anv_id] = id
+    if result != nil
+        psw_krypterad = result["losenord"]
+        id = result["id"]
+        p id
+        session[:anv_id] = id
 
-    if password_okrypterat=BCrypt::Password.new(psw_krypterad) == password
-  
-      p "användarid: #{session[:anv_id]}"
-  
-      redirect back
-  
-  
-  
+        if password_okrypterat=BCrypt::Password.new(psw_krypterad) == password
+    
+        p "användarid: #{session[:anv_id]}"
+    
+        redirect back
+    
+    
+    
+        else
+    
+            flash[:notice] = "Jag tror du angav fel lösenord."
+            redirect back
+            
+        end
+
     else
- 
         
-        redirect("/ajajaj, nu blev det fel här/")
+        flash[:notice] = "Jag tror du angav fel användarnamn."
+        redirect back
 
-        
     end
+        
 end
