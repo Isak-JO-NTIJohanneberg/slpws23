@@ -3,7 +3,8 @@ require 'slim'
 require 'sqlite3'
 require 'bcrypt'
 require "sinatra/reloader"
-require 'sinatra/flash' 
+require 'sinatra/flash'
+require_relative './model.rb' 
 
 enable :sessions
 
@@ -20,29 +21,31 @@ end
    
 
 get('/annonser/') do
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT DISTINCT rubrik, id FROM Annonser")
+    #db = SQLite3::Database.new("db/AD_DATA.db")
+    #db.results_as_hash = true
+    anropa_db()
+
+    result = @db.execute("SELECT DISTINCT rubrik, id FROM Annonser")
     slim(:"annonser/index", locals:{result:result})
 end
 
 get('/annonser/new') do
     
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Kattegorier")
+    anropa_db()
+
+    result = @db.execute("SELECT * FROM Kattegorier")
     slim(:"annonser/new", locals:{result:result})
 end
 
 get('/annonser/:id') do
     id = params[:id].to_i
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Annonser WHERE id = ?",id).first
+    anropa_db()
+
+    result = @db.execute("SELECT * FROM Annonser WHERE id = ?",id).first
     if session[:anv_id] != nil
-        @anv_sparade = db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
+        @anv_sparade = @db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
     end
-    @antal_lajks = db.execute("SELECT COUNT (Annons_id) FROM User_saved_relation WHERE Annons_id = ?", id).first
+    @antal_lajks = @db.execute("SELECT COUNT (Annons_id) FROM User_saved_relation WHERE Annons_id = ?", id).first
     slim(:"annonser/show", locals:{result:result})
 end
 
@@ -50,11 +53,11 @@ get('/mina_annonser/') do
 
 
     if session[:anv_id] != nil
-            
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
-    slim(:"hantera_annonser/index", locals:{result:result})
+                
+        anropa_db()
+
+        result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+        slim(:"hantera_annonser/index", locals:{result:result})
 
     else
 
@@ -82,8 +85,9 @@ post('/annonser') do
     end
 
        
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("INSERT INTO Annonser (rubrik, pris, annons_text, user_owner_id, kattegori_id, bild) VALUES (?,?,?,?,?,?)", rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)  
+    anropa_db()
+
+    @db.execute("INSERT INTO Annonser (rubrik, pris, annons_text, user_owner_id, kattegori_id, bild) VALUES (?,?,?,?,?,?)", rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)  
      
 
     redirect("/annonser/")
@@ -94,10 +98,18 @@ end
 post('/annonser/:id/delete') do    
     id = params[:id].to_i
     db = SQLite3::Database.new("db/AD_DATA.db")
-    if session[:anv_id] == db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+
+    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
+
+    if session[:anv_id] == db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
+
         db.execute("DELETE FROM Annonser WHERE id = ?", id)
+
+        db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
+
+
     else
-        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
+        flash[:notice] = "Hörredu Hackerman, Du har inte behörighet att utföra den här återgärden"
         redirect back
     end
     redirect("/mina_annonser/")
@@ -110,12 +122,20 @@ get('/annonser/:id/edit') do
     db.results_as_hash = true
     result = db.execute("SELECT * FROM Annonser WHERE id = ?", id).first
     @kattegorier = db.execute("SELECT * FROM Kattegorier")
-    if session[:anv_id] == db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+
+    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+
+    if session[:anv_id] == db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+
+
         slim(:"annonser/edit",locals:{result:result})
+
     else
-        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
-        redirect("/")
+        flash[:notice] = "Hörredu hackerman, Du har inte behörighet att utföra den här återgärden"
+        redirect back
     end
+
+
 end
 
 
@@ -184,6 +204,26 @@ post('/anvandare/:id/update') do
 
 end
 
+post('/anvandare/:id/delete') do    
+    id = params[:id].to_i
+    db = SQLite3::Database.new("db/AD_DATA.db")
+
+    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
+
+    if session[:anv_id] == db.execute("SELECT DISTINCT id FROM Anvandare WHERE id = ?", id).first.first
+
+        db.execute("DELETE FROM Anvandare WHERE id = ?", id)
+
+        db.execute("DELETE FROM User_saved_relation WHERE anv_id = ?", id)
+
+        session.destroy
+
+    else
+        flash[:notice] = "Hörredu Hackerman, Du har inte behörighet att utföra den här återgärden"
+        redirect back
+    end
+    redirect("/anvandare/login/")
+end
 
 
 post('/annonser/:id/spara') do
@@ -209,7 +249,11 @@ post('/annonser/:id/rm_fav') do
     annons_id = params[:id].to_i
     anv_id = session[:anv_id]
     db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("DELETE FROM User_saved_relation WHERE annons_id = ? AND anv_id =?", annons_id, anv_id)
+    if anv_id != nil
+        db.execute("DELETE FROM User_saved_relation WHERE annons_id = ? AND anv_id =?", annons_id, anv_id)
+    else
+        flash[:notice] = "Hörredu Hackerman, Du måste vara inloggad för att utföra den här återgärden"
+    end
     redirect back
 end
 
@@ -229,35 +273,36 @@ post('/anvandare') do
         tel_nr = params[:tel_nr].to_i
         password = params[:password]
 
-        i = 0
+        password_krypterat=BCrypt::Password.create(password)
 
-        anv_exists = nil
         
-        p db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
 
-
-        while anv_exists == nil && i < db.execute("SELECT COUNT (id) FROM Anvandare").first["COUNT (id)"]
         
-            anv_exists = db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
-
-            i += 1
-
-        end
-
-        if anv_exists == nil
+        #p db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
 
 
+        #p db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i
+
+        if db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i == 0
+            
             db = SQLite3::Database.new("db/AD_DATA.db")
-            db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)  
+            db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)           
+
+            flash[:notice] = "Ditt konto har skapats, nu kan du logga in."
+
+            redirect ('/anvandare/login/')
 
         else
-        
 
-            flash[:notice] = "Det användarnamnet är redan upptaget."
+            flash[:notice] = "Användarnamnet #{user_name} är redan upptaget, prova med något annat anv_namn"
             redirect back
 
+            # det där användarnamnet är redan upptaget, välj något annat. 
+
         end
-    
+            
+
+
             
 
     else
@@ -307,7 +352,7 @@ get('/anvandare/:id/edit/') do
     if session[:anv_id] == id
         slim(:"anvandare/edit",locals:{result:result})
     else
-        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
+        flash[:notice] = "Hörredu hackerman, Du har inte behörighet att utföra den här återgärden"
         redirect("/")
     end
 end
