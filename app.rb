@@ -372,9 +372,8 @@ end
 get('/sparade/') do
 
         anv_id = session[:anv_id]
-        db = SQLite3::Database.new("db/AD_DATA.db")
-        db.results_as_hash = true
-        result = db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
+        anropa_db
+        result = @db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
 
         slim(:"sparade/index", locals:{result:result})
                     
