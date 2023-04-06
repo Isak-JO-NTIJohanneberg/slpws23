@@ -1,0 +1,20 @@
+.notice{
+
+font-size: 1.2rem;
+color: red;
+
+}
+
+
+nav{
+
+display: flex;
+justify-content: space-evenly;
+
+background-color: beige;
+
+height: 100px;
+
+align-items: center;
+
+}

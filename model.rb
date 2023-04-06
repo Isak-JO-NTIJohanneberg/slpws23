@@ -11,3 +11,37 @@ def hackerman()
     redirect back
 
 end
+
+def ej_inlogg_note()
+
+    
+    flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
+    redirect back
+
+
+end
+
+def cooldown_note()
+
+
+    flash[:notice] = "Vänta 10 sekunder innan du försöker logga in igen."
+    redirect('/anvandare/login/')
+
+
+
+end
+
+
+def cooldown()
+
+    if session[:inlogg_tid] != nil
+        
+        if session[:inlogg_tid]+10 > Time.new
+
+            cooldown_note()
+
+        end
+
+    end
+
+end

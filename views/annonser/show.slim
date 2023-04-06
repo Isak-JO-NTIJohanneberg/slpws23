@@ -1,6 +1,17 @@
-h2 = result
 
-h3 rubrik: #{result["rubrik"]}
+- anropa_db()
+
+h2 = result["rubrik"]
+
+
+
+- if result["bild"] != nil
+    img src="/user_bilder/#{result["bild"]}" alt="annons-foto" height="300px"
+
+- else
+    img src="/no_image.png" alt="annons-foto" height="300px"
+
+
 
 - sparad = false
 
@@ -20,12 +31,15 @@ h3 rubrik: #{result["rubrik"]}
 
 h5 Sparad av #{@antal_lajks["COUNT (Annons_id)"]} användare
 
-br
 
-- if result["bild"] != nil
-    img src="/user_bilder/#{result["bild"]}" alt="annons-foto" width="400px"
 
-- else
-    img src="/no_image.png" alt="annons-foto" width="400px"
+h2 Pris: #{result["pris"]} kr
+
+p Annonstext: #{result["annons_text"]}
+
+p Telefonnummer till säljaren: #{@kontakt}
+
+
+
 
 

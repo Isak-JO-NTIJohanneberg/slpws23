@@ -3,8 +3,10 @@ h2 Annnonser:
 
 ol
   - result.each do |result|
-    a href="/annonser/#{result["id"]}"  rubrik: #{result["rubrik"]}
+    a href="/annonser/#{result["id"]}"  #{result["rubrik"]}
+    p pris: #{result["pris"]} kr
     br/
+    br
       
       
             

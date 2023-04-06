@@ -9,6 +9,11 @@ require_relative './model.rb'
 enable :sessions
 
 get('/') do
+    anropa_db()
+    @anv_namn = ""
+    if session[:anv_id] != nil
+        @anv_namn = @db.execute("SELECT DISTINCT anv_namn FROM Anvandare WHERE id = ?", session[:anv_id]).first["anv_namn"]
+    end
     slim(:main)
 end
 
@@ -25,7 +30,7 @@ get('/annonser/') do
     #db.results_as_hash = true
     anropa_db()
 
-    result = @db.execute("SELECT DISTINCT rubrik, id FROM Annonser")
+    result = @db.execute("SELECT DISTINCT rubrik, id, pris FROM Annonser")
     slim(:"annonser/index", locals:{result:result})
 end
 
@@ -46,6 +51,9 @@ get('/annonser/:id') do
         @anv_sparade = @db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
     end
     @antal_lajks = @db.execute("SELECT COUNT (Annons_id) FROM User_saved_relation WHERE Annons_id = ?", id).first
+
+    @kontakt = @db.execute("SELECT kontakt_upg FROM Anvandare WHERE id IN (SELECT User_owner_id FROM Annonser WHERE id = ?)", id).first["kontakt_upg"]
+
     slim(:"annonser/show", locals:{result:result})
 end
 
@@ -61,8 +69,8 @@ get('/mina_annonser/') do
 
     else
 
-        flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
-        redirect back
+        ej_inlogg_note()
+
     end
 end
 
@@ -97,21 +105,33 @@ end
 
 post('/annonser/:id/delete') do    
     id = params[:id].to_i
-    db = SQLite3::Database.new("db/AD_DATA.db")
+    anropa_db()
+    #p @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first
 
-    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
+    #p @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id)
 
-    if session[:anv_id] == db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
 
-        db.execute("DELETE FROM Annonser WHERE id = ?", id)
+    if @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id).first["bild"] != nil 
+        bild_filnamn = @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id).first["bild"]
 
-        db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
+        File.delete("./public/user_bilder/#{bild_filnamn}")
+
+    end
+
+
+
+    if session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+
+        @db.execute("DELETE FROM Annonser WHERE id = ?", id)
+
+        @db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
 
 
     else
-        flash[:notice] = "Hörredu Hackerman, Du har inte behörighet att utföra den här återgärden"
-        redirect back
+        hackerman()
     end
+
+ 
     redirect("/mina_annonser/")
 end
 
@@ -123,7 +143,7 @@ get('/annonser/:id/edit') do
     result = db.execute("SELECT * FROM Annonser WHERE id = ?", id).first
     @kattegorier = db.execute("SELECT * FROM Kattegorier")
 
-    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+    p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
     if session[:anv_id] == db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
@@ -131,8 +151,7 @@ get('/annonser/:id/edit') do
         slim(:"annonser/edit",locals:{result:result})
 
     else
-        flash[:notice] = "Hörredu hackerman, Du har inte behörighet att utföra den här återgärden"
-        redirect back
+        hackerman()
     end
 
 
@@ -167,8 +186,8 @@ post('/annonser/:id/update') do
         db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
         redirect("/mina_annonser/")
     else
-        flash[:notice] = "Du har inte behörighet att utföra den här återgärden"
-        redirect("/")
+        ej_inlogg_note()
+
     end
 
 end
@@ -216,11 +235,13 @@ post('/anvandare/:id/delete') do
 
         db.execute("DELETE FROM User_saved_relation WHERE anv_id = ?", id)
 
+        db.execute("DELETE FROM Annonser WHERE user_owner_id = ?", id)
+
+
         session.destroy
 
     else
-        flash[:notice] = "Hörredu Hackerman, Du har inte behörighet att utföra den här återgärden"
-        redirect back
+        hackerman()
     end
     redirect("/anvandare/login/")
 end
@@ -252,7 +273,7 @@ post('/annonser/:id/rm_fav') do
     if anv_id != nil
         db.execute("DELETE FROM User_saved_relation WHERE annons_id = ? AND anv_id =?", annons_id, anv_id)
     else
-        flash[:notice] = "Hörredu Hackerman, Du måste vara inloggad för att utföra den här återgärden"
+        hackerman()
     end
     redirect back
 end
@@ -352,8 +373,7 @@ get('/anvandare/:id/edit/') do
     if session[:anv_id] == id
         slim(:"anvandare/edit",locals:{result:result})
     else
-        flash[:notice] = "Hörredu hackerman, Du har inte behörighet att utföra den här återgärden"
-        redirect("/")
+        hackerman()
     end
 end
 
@@ -365,6 +385,12 @@ get('/anvandare/logout/') do
 end
 
 post('/anvandare/login') do
+
+    cooldown()
+    
+
+    session[:inlogg_tid] = Time.new
+
 
     user_name = params[:user_name]
     tel_nr = params[:tel_nr].to_i
@@ -400,5 +426,6 @@ post('/anvandare/login') do
         redirect back
 
     end
-        
+    
+    
 end

@@ -1,10 +1,8 @@
-p en potatis
-
-p = result
+h2 Dina sparade annonser:
 
 ol
   - result.each do |result|
-    a href="/annonser/#{result["id"]}"  rubrik: #{result["rubrik"]}
+    a href="/annonser/#{result["id"]}"  #{result["rubrik"]}
     
     form method="post" action="../annonser/#{result["id"]}/rm_fav"
         input type="submit" value="Ta bort från sparade"
