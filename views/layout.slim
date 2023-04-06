@@ -13,7 +13,6 @@ html lang="sv"
       - anropa_db()
       - anv_namn = @db.execute("SELECT DISTINCT anv_namn FROM Anvandare WHERE id = ?", session[:anv_id]).first["anv_namn"]
       p du är inloggad som användare med användarnamnet: #{anv_namn}
-      p = session[:inlogg_tid]+10
     - else
       p du är inte inloggad.
     nav

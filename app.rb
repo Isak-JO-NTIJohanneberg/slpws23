@@ -57,21 +57,25 @@ get('/annonser/:id') do
     slim(:"annonser/show", locals:{result:result})
 end
 
-get('/mina_annonser/') do
-
-
+before('/mina_annonser/') do
     if session[:anv_id] != nil
                 
-        anropa_db()
-
-        result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
-        slim(:"hantera_annonser/index", locals:{result:result})
 
     else
 
         ej_inlogg_note()
 
     end
+
+end
+
+get('/mina_annonser/') do
+   
+        anropa_db()
+
+        result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+        slim(:"hantera_annonser/index", locals:{result:result})
+
 end
 
 post('/annonser') do
@@ -223,47 +227,62 @@ post('/anvandare/:id/update') do
 
 end
 
-post('/anvandare/:id/delete') do    
+
+before('/anvandare/:id/delete') do
     id = params[:id].to_i
     db = SQLite3::Database.new("db/AD_DATA.db")
 
     #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
 
-    if session[:anv_id] == db.execute("SELECT DISTINCT id FROM Anvandare WHERE id = ?", id).first.first
-
-        db.execute("DELETE FROM Anvandare WHERE id = ?", id)
-
-        db.execute("DELETE FROM User_saved_relation WHERE anv_id = ?", id)
-
-        db.execute("DELETE FROM Annonser WHERE user_owner_id = ?", id)
-
-
-        session.destroy
-
-    else
+    if session[:anv_id] != db.execute("SELECT DISTINCT id FROM Anvandare WHERE id = ?", id).first.first
         hackerman()
     end
+    
+end
+   
+
+post('/anvandare/:id/delete') do 
+    id = params[:id].to_i
+
+    anropa_db()
+
+    @db.execute("DELETE FROM Anvandare WHERE id = ?", id)
+
+    @db.execute("DELETE FROM User_saved_relation WHERE anv_id = ?", id)
+
+    @db.execute("DELETE FROM Annonser WHERE user_owner_id = ?", id)
+
+
+    session.destroy
+
     redirect("/anvandare/login/")
+end
+
+
+before('/annonser/:id/spara') do
+
+    if session[:anv_id] != nil
+
+    else
+        
+        ej_inlogg_note()
+    end
+
+
 end
 
 
 post('/annonser/:id/spara') do
 
-    if session[:anv_id] != nil
-   
+    annons_id = params[:id].to_i
+    anv_id = session[:anv_id]
+    p anv_id
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.execute("INSERT INTO User_saved_relation (anv_id, annons_id) VALUES (?,?)", anv_id, annons_id)
+    redirect("/annonser/#{annons_id}")
+    redirect back
 
-        annons_id = params[:id].to_i
-        anv_id = session[:anv_id]
-        p anv_id
-        db = SQLite3::Database.new("db/AD_DATA.db")
-        db.execute("INSERT INTO User_saved_relation (anv_id, annons_id) VALUES (?,?)", anv_id, annons_id)
-        redirect("/annonser/#{annons_id}")
-        redirect back
-    else
 
-        flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
-        redirect back
-    end
 end
 
 post('/annonser/:id/rm_fav') do
@@ -340,9 +359,17 @@ get('/anvandare/success') do
 
 end
 
-get('/sparade/') do
-
+before('/sparade/') do
     if session[:anv_id] != nil
+            
+    else
+
+        ej_inlogg_note()
+
+    end
+end
+
+get('/sparade/') do
 
         anv_id = session[:anv_id]
         db = SQLite3::Database.new("db/AD_DATA.db")
@@ -350,31 +377,32 @@ get('/sparade/') do
         result = db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
 
         slim(:"sparade/index", locals:{result:result})
-            
-    else
-
-        flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
-        redirect back
-    end
-
-        
+                    
 end
 
 get('/anvandare/login/') do
     slim(:"anvandare/login")
 end
 
-get('/anvandare/:id/edit/') do
+before('/anvandare/:id/edit/') do
+
     id = params[:id].to_i
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT DISTINCT anv_namn, kontakt_upg FROM Anvandare WHERE id = ?", id).first
 
     if session[:anv_id] == id
-        slim(:"anvandare/edit",locals:{result:result})
+
     else
         hackerman()
     end
+
+end
+
+
+get('/anvandare/:id/edit/') do
+    id = params[:id].to_i
+    anropa_db
+    result = @db.execute("SELECT DISTINCT anv_namn, kontakt_upg FROM Anvandare WHERE id = ?", id).first
+
+    slim(:"anvandare/edit",locals:{result:result})
 end
 
 get('/anvandare/logout/') do
@@ -384,48 +412,17 @@ get('/anvandare/logout/') do
     redirect('/anvandare/login/')
 end
 
+
+before('/anvandare/login') do
+
+    cooldown
+
+end
+
+
 post('/anvandare/login') do
-
-    cooldown()
     
-
-    session[:inlogg_tid] = Time.new
-
-
-    user_name = params[:user_name]
-    tel_nr = params[:tel_nr].to_i
-    password = params[:password]
-
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Anvandare WHERE anv_namn = ?", user_name).first
-    if result != nil
-        psw_krypterad = result["losenord"]
-        id = result["id"]
-        p id
-        session[:anv_id] = id
-
-        if password_okrypterat=BCrypt::Password.new(psw_krypterad) == password
-    
-        p "användarid: #{session[:anv_id]}"
-    
-        redirect back
-    
-    
-    
-        else
-    
-            flash[:notice] = "Jag tror du angav fel lösenord."
-            redirect back
-            
-        end
-
-    else
-        
-        flash[:notice] = "Jag tror du angav fel användarnamn."
-        redirect back
-
-    end
+    logga_in()
     
     
 end
