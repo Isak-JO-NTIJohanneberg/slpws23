@@ -107,11 +107,24 @@ post('/annonser') do
 
 end
 
+before('/annonser/:id/delete') do    
+
+    id = params[:id].to_i
+    anropa_db()
+  
+    if session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+
+ 
+    else
+        hackerman()
+    end
+
+end
+
 post('/annonser/:id/delete') do    
     id = params[:id].to_i
     anropa_db()
     #p @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first
-
     #p @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id)
 
 
@@ -122,18 +135,10 @@ post('/annonser/:id/delete') do
 
     end
 
+   
+    @db.execute("DELETE FROM Annonser WHERE id = ?", id)
 
-
-    if session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
-
-        @db.execute("DELETE FROM Annonser WHERE id = ?", id)
-
-        @db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
-
-
-    else
-        hackerman()
-    end
+    @db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
 
  
     redirect("/mina_annonser/")
