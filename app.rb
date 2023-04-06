@@ -203,7 +203,7 @@ end
 
 post('/anvandare/:id/update') do
 
-    if session[:anv_id] == params[:id]
+    if session[:anv_id] == params[:id].to_i
 
 
         id = session[:anv_id]
@@ -224,9 +224,24 @@ post('/anvandare/:id/update') do
             password_krypterat=BCrypt::Password.create(password)
             db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, losenord=? WHERE id=?", user_name, tel_nr, password_krypterat, id)  
             
+            redirect back
+
+
+        else 
+
+
+            flash[:notice] = "Du angav fel lösenord."
+            redirect back
+
+
+
         end
+    else
+
+        hackerman
+
+    
     end
-    redirect("/")
 
 
 
