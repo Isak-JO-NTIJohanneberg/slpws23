@@ -8,6 +8,21 @@ require_relative './model.rb'
 
 enable :sessions
 
+before all_of("/mina_annonser", "/") do
+   
+    if session[:anv_id] != nil
+                
+
+    else
+
+        ej_inlogg_note()
+
+    end
+    
+    #kolla_behorighet
+
+end
+
 get('/') do
     anropa_db()
     @anv_namn = ""
@@ -58,22 +73,22 @@ get('/annonser/:id') do
 end
 
 before('/mina_annonser/') do
-    if session[:anv_id] != nil
-                
-
-    else
-
-        ej_inlogg_note()
-
-    end
+   
 
 end
 
 get('/mina_annonser/') do
    
         anropa_db()
+        if @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", session[:anv_id]).first["admin"] == 1
 
-        result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+            result = @db.execute("SELECT * FROM Annonser")
+
+
+        else 
+            result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+
+        end
         slim(:"hantera_annonser/index", locals:{result:result})
 
 end
@@ -112,8 +127,7 @@ before('/annonser/:id/delete') do
     id = params[:id].to_i
     anropa_db()
   
-    if session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
-
+    if check_auth_user_or_admin(id)
  
     else
         hackerman()
@@ -135,11 +149,7 @@ post('/annonser/:id/delete') do
 
     end
 
-   
-    @db.execute("DELETE FROM Annonser WHERE id = ?", id)
-
-    @db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
-
+    ta_veck_annons(id)
  
     redirect("/mina_annonser/")
 end
@@ -154,7 +164,7 @@ get('/annonser/:id/edit') do
 
     p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
-    if session[:anv_id] == db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+    if check_auth_user_or_admin(id) == true
 
 
         slim(:"annonser/edit",locals:{result:result})
@@ -191,7 +201,8 @@ post('/annonser/:id/update') do
 
     p db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
-    if session[:anv_id] == db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+    if check_auth_user_or_admin(id)
+        
         db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
         redirect("/mina_annonser/")
     else
@@ -266,12 +277,7 @@ post('/anvandare/:id/delete') do
 
     anropa_db()
 
-    @db.execute("DELETE FROM Anvandare WHERE id = ?", id)
-
-    @db.execute("DELETE FROM User_saved_relation WHERE anv_id = ?", id)
-
-    @db.execute("DELETE FROM Annonser WHERE user_owner_id = ?", id)
-
+    anv_delete(id)
 
     session.destroy
 
@@ -425,8 +431,8 @@ get('/anvandare/:id/edit/') do
 end
 
 get('/anvandare/logout/') do
-    session.destroy
-    flash[:notice] = "Du har loggat ut!"
+
+    utloggad()
 
     redirect('/anvandare/login/')
 end

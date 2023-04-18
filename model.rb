@@ -82,4 +82,61 @@ def logga_in()
 end
 
 
+def check_auth_user_or_admin(id)
+
+
+    anropa_db()
+
+    if session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"] || session[:anv_id] == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
+        return true
+
+    else 
+        return false
+
+    end
+
+end
 #behörigheter
+
+
+def ta_veck_annons(id)
+
+    @db.execute("DELETE FROM Annonser WHERE id = ?", id)
+
+    @db.execute("DELETE FROM User_saved_relation WHERE annons_id = ?", id)
+
+end
+
+def anv_delete(id)
+
+
+    @db.execute("DELETE FROM Anvandare WHERE id = ?", id)
+
+    @db.execute("DELETE FROM User_saved_relation WHERE anv_id = ?", id)
+
+    @db.execute("DELETE FROM Annonser WHERE user_owner_id = ?", id)
+
+
+
+end
+
+def utloggad()
+
+    session.destroy
+    flash[:notice] = "Du har loggat ut!"
+
+
+end
+
+
+def kolla_behorighet(havd, krävs)
+
+    if havd = krävs 
+
+
+    else
+
+        ej_inlogg_note
+
+
+end
