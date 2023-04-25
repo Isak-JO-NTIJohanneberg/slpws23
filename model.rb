@@ -8,7 +8,6 @@ end
 def hackerman()
 
     flash[:notice] = "Hörredu Hackerman, Du har inte behörighet att utföra den här återgärden"
-    redirect back
 
 end
 
@@ -16,9 +15,7 @@ def ej_inlogg_note()
 
     
     flash[:notice] = "Du måste vara inloggad för att utföra den här återgärden"
-    redirect back
-
-
+    
 end
 
 def cooldown_note()
@@ -42,42 +39,7 @@ def cooldown()
 end
 
 def logga_in()
-    session[:inlogg_tid] = Time.new
-
-    user_name = params[:user_name]
-    tel_nr = params[:tel_nr].to_i
-    password = params[:password]
-
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Anvandare WHERE anv_namn = ?", user_name).first
-    if result != nil
-        psw_krypterad = result["losenord"]
-        id = result["id"]
-        p id
-        session[:anv_id] = id
-
-        if password_okrypterat=BCrypt::Password.new(psw_krypterad) == password
     
-        p "användarid: #{session[:anv_id]}"
-    
-        redirect back
-    
-    
-    
-        else
-    
-            flash[:notice] = "Jag tror du angav fel lösenord."
-            redirect back
-            
-        end
-
-    else
-        
-        flash[:notice] = "Jag tror du angav fel användarnamn."
-        redirect back
-
-    end
 
 end
 
@@ -129,14 +91,38 @@ def utloggad()
 end
 
 
-def kolla_behorighet(havd, krävs)
+#def kolla_behorighet(havd, krävs)
 
-    if havd = krävs 
-
-
-    else
-
-        ej_inlogg_note
+ #   if havd = krävs 
 
 
+  #  else
+
+   #     ej_inlogg_note
+
+
+#nd
+
+
+
+def all_of(*strings)
+    return /(#{strings.join("|")})/
+end
+
+def all_of2(*strings2)
+    p "/(#{strings2.join("|")})/"
+    return /(#{strings2.join("|")})/
+end
+   
+def select_user_login()
+    @result = @db.execute("SELECT * FROM Anvandare WHERE anv_namn = ?", @user_name).first
+end
+
+def check_psw(password)
+    psw_krypterad = @result["losenord"]
+    return password_okrypterat=BCrypt::Password.new(psw_krypterad) == password
+end
+
+def edit_usr_form_data(id)
+    return @db.execute("SELECT DISTINCT anv_namn, kontakt_upg FROM Anvandare WHERE id = ?", id).first
 end

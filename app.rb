@@ -8,20 +8,48 @@ require_relative './model.rb'
 
 enable :sessions
 
-before all_of("/mina_annonser", "/") do
+
+
+#before do 
+
+ #   restricted_path = = []
+
+#end
+before all_of("/mina_annonser/", "/annonser/:id/spara", "/sparade/") do
    
     if session[:anv_id] != nil
-                
-
+            
     else
-
         ej_inlogg_note()
-
+        redirect back
     end
-    
+
     #kolla_behorighet
 
 end
+
+before all_of2("/anvandare/:id/update", "/anvandare/:id/delete", "/anvandare/:id/edit") do
+
+    # det här funkajj inte, vafan.
+
+    p "HÄR ÄR BEFORE ROUTEN"
+
+    if session[:anv_id] == params[:id]
+
+    else
+
+        hackerman()
+        redirect back
+
+    end
+
+end
+
+#before ('/anvandare/:id/edit/') do 
+
+ #   p "HÄR ÄR BEFORE ROUTEN2"
+
+#nd
 
 get('/') do
     anropa_db()
@@ -72,14 +100,11 @@ get('/annonser/:id') do
     slim(:"annonser/show", locals:{result:result})
 end
 
-before('/mina_annonser/') do
-   
-
-end
 
 get('/mina_annonser/') do
    
         anropa_db()
+
         if @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", session[:anv_id]).first["admin"] == 1
 
             result = @db.execute("SELECT * FROM Annonser")
@@ -131,6 +156,8 @@ before('/annonser/:id/delete') do
  
     else
         hackerman()
+        redirect back
+
     end
 
 end
@@ -171,6 +198,8 @@ get('/annonser/:id/edit') do
 
     else
         hackerman()
+        redirect back
+
     end
 
 
@@ -207,6 +236,7 @@ post('/annonser/:id/update') do
         redirect("/mina_annonser/")
     else
         ej_inlogg_note()
+        redirect back
 
     end
 
@@ -250,6 +280,8 @@ post('/anvandare/:id/update') do
     else
 
         hackerman
+        redirect back
+
 
     
     end
@@ -259,17 +291,19 @@ post('/anvandare/:id/update') do
 end
 
 
-before('/anvandare/:id/delete') do
-    id = params[:id].to_i
-    db = SQLite3::Database.new("db/AD_DATA.db")
-
+#before('/anvandare/:id/delete') do
+ #   id = params[:id].to_i
+  #  db = SQLite3::Database.new("db/AD_DATA.db")
+#
     #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
 
-    if session[:anv_id] != db.execute("SELECT DISTINCT id FROM Anvandare WHERE id = ?", id).first.first
-        hackerman()
-    end
+ #   if session[:anv_id] != db.execute("SELECT DISTINCT id FROM Anvandare WHERE id = ?", id).first.first
+  #      hackerman()
+   #     redirect back
+
+    #end
     
-end
+#end
    
 
 post('/anvandare/:id/delete') do 
@@ -285,17 +319,6 @@ post('/anvandare/:id/delete') do
 end
 
 
-before('/annonser/:id/spara') do
-
-    if session[:anv_id] != nil
-
-    else
-        
-        ej_inlogg_note()
-    end
-
-
-end
 
 
 post('/annonser/:id/spara') do
@@ -319,6 +342,8 @@ post('/annonser/:id/rm_fav') do
         db.execute("DELETE FROM User_saved_relation WHERE annons_id = ? AND anv_id =?", annons_id, anv_id)
     else
         hackerman()
+        redirect back
+
     end
     redirect back
 end
@@ -385,15 +410,6 @@ get('/anvandare/success') do
 
 end
 
-before('/sparade/') do
-    if session[:anv_id] != nil
-            
-    else
-
-        ej_inlogg_note()
-
-    end
-end
 
 get('/sparade/') do
 
@@ -409,31 +425,18 @@ get('/anvandare/login/') do
     slim(:"anvandare/login")
 end
 
-before('/anvandare/:id/edit/') do
 
-    id = params[:id].to_i
-
-    if session[:anv_id] == id
-
-    else
-        hackerman()
-    end
-
-end
 
 
 get('/anvandare/:id/edit/') do
+    p "HERES JOHNNY"
     id = params[:id].to_i
     anropa_db
-    result = @db.execute("SELECT DISTINCT anv_namn, kontakt_upg FROM Anvandare WHERE id = ?", id).first
-
-    slim(:"anvandare/edit",locals:{result:result})
+    slim(:"anvandare/edit",locals:{result:edit_usr_form_data(id)})
 end
 
 get('/anvandare/logout/') do
-
     utloggad()
-
     redirect('/anvandare/login/')
 end
 
@@ -446,8 +449,35 @@ end
 
 
 post('/anvandare/login') do
+        
+    session[:inlogg_tid] = Time.new
+    @user_name = params[:user_name]
+    password = params[:password]
+    anropa_db()
+    select_user_login()
+
+    if @result != nil
+        
+        id = @result["id"]
+        #p id
+
+        if check_psw(password)
     
-    logga_in()
+            #p "användarid: #{session[:anv_id]}"
+            session[:anv_id] = id
+            redirect back
+        else
     
+            flash[:notice] = "Jag tror du angav fel lösenord."
+            redirect back
+            
+        end
+
+    else
+        
+        flash[:notice] = "Jag tror du angav fel användarnamn."
+        redirect back
+
+    end 
     
 end
