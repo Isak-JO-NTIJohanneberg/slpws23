@@ -28,34 +28,40 @@ before all_of("/mina_annonser/", "/annonser/:id/spara", "/sparade/") do
 
 end
 
-before all_of2("/anvandare/:id/update", "/anvandare/:id/delete", "/anvandare/:id/edit") do
+before ("/anvandare/:id/edit/") do
+    check_usr_auth(session[:anv_id], params[:id])  
+end
 
-    # det här funkajj inte, vafan.
+before ("/anvandare/:id/delete") do
+    check_usr_auth(session[:anv_id], params[:id])    
+end
 
-    p "HÄR ÄR BEFORE ROUTEN"
+before ("/anvandare/:id/update") do
+    check_usr_auth(session[:anv_id], params[:id])     
+end
+# params av routen (params[:id] fungerar inte med "before all_of"), därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
 
-    if session[:anv_id] == params[:id]
 
-    else
+before all_of2("/anvandare", '/anvandare/*/update') do
 
-        hackerman()
-        redirect back
+    p "en before route"
+    email = params[:tel_nr]
+    password = params[:password]
+
+    #lösenord för kort, saknas @ i email
+    if validate_email_password(email, password)
+
+    else redirect back
 
     end
 
 end
 
-#before ('/anvandare/:id/edit/') do 
-
- #   p "HÄR ÄR BEFORE ROUTEN2"
-
-#nd
 
 get('/') do
-    anropa_db()
     @anv_namn = ""
     if session[:anv_id] != nil
-        @anv_namn = @db.execute("SELECT DISTINCT anv_namn FROM Anvandare WHERE id = ?", session[:anv_id]).first["anv_namn"]
+        @anv_namn = inloggad_anv_namn
     end
     slim(:main)
 end
@@ -103,18 +109,18 @@ end
 
 get('/mina_annonser/') do
    
-        anropa_db()
+    anropa_db()
 
-        if @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", session[:anv_id]).first["admin"] == 1
+    if @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", session[:anv_id]).first["admin"] == 1
 
-            result = @db.execute("SELECT * FROM Annonser")
+        result = @db.execute("SELECT * FROM Annonser")
 
 
-        else 
-            result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+    else 
+        result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
 
-        end
-        slim(:"hantera_annonser/index", locals:{result:result})
+    end
+    slim(:"hantera_annonser/index", locals:{result:result})
 
 end
 
@@ -139,28 +145,14 @@ post('/annonser') do
        
     anropa_db()
 
-    @db.execute("INSERT INTO Annonser (rubrik, pris, annons_text, user_owner_id, kattegori_id, bild) VALUES (?,?,?,?,?,?)", rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)  
-     
+    savetodb_annonser(rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)
 
     redirect("/annonser/")
 
 
 end
 
-before('/annonser/:id/delete') do    
 
-    id = params[:id].to_i
-    anropa_db()
-  
-    if check_auth_user_or_admin(id)
- 
-    else
-        hackerman()
-        redirect back
-
-    end
-
-end
 
 post('/annonser/:id/delete') do    
     id = params[:id].to_i
@@ -189,19 +181,9 @@ get('/annonser/:id/edit') do
     result = db.execute("SELECT * FROM Annonser WHERE id = ?", id).first
     @kattegorier = db.execute("SELECT * FROM Kattegorier")
 
-    p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
-    if check_auth_user_or_admin(id) == true
-
-
-        slim(:"annonser/edit",locals:{result:result})
-
-    else
-        hackerman()
-        redirect back
-
-    end
-
+    slim(:"annonser/edit",locals:{result:result})
 
 end
 
@@ -230,80 +212,56 @@ post('/annonser/:id/update') do
 
     p db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
-    if check_auth_user_or_admin(id)
-        
-        db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
-        redirect("/mina_annonser/")
-    else
-        ej_inlogg_note()
-        redirect back
-
-    end
+    db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
+    redirect("/mina_annonser/")
+   
 
 end
 
 post('/anvandare/:id/update') do
 
-    if session[:anv_id] == params[:id].to_i
 
-
-        id = session[:anv_id]
-            
-        user_name = params[:user_name]
-        tel_nr = params[:tel_nr].to_i
-        password = params[:password]
-
+    id = session[:anv_id]
         
+    user_name = params[:user_name]
+    tel_nr = params[:tel_nr]
+    password = params[:password]
+
+    
 
 
-        db = SQLite3::Database.new("db/AD_DATA.db")
-        db.results_as_hash = true
-        psw_krypterad = db.execute("SELECT DISTINCT Losenord FROM Anvandare WHERE id = ?", id).first["losenord"]
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.results_as_hash = true
+    psw_krypterad = db.execute("SELECT DISTINCT Losenord FROM Anvandare WHERE id = ?", id).first["losenord"]
 
-        if params[:password] == params[:password2] && password_okrypterat=BCrypt::Password.new(psw_krypterad) == params[:gamla_password]
+    if params[:password] == nil 
 
-            password_krypterat=BCrypt::Password.create(password)
-            db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, losenord=? WHERE id=?", user_name, tel_nr, password_krypterat, id)  
-            
-            redirect back
+        db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, WHERE id=?", user_name, tel_nr, id)
 
+    elsif params[:password] == params[:password2] && password_okrypterat=BCrypt::Password.new(psw_krypterad) == params[:gamla_password]
 
-        else 
-
-
-            flash[:notice] = "Du angav fel lösenord."
-            redirect back
-
-
-
-        end
-    else
-
-        hackerman
+        password_krypterat=BCrypt::Password.create(password)
+        db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, losenord=? WHERE id=?", user_name, tel_nr, password_krypterat, id)  
+        
         redirect back
 
 
-    
+    else 
+
+
+        flash[:notice] = "Du angav fel lösenord."
+        redirect back
+
+
+
     end
+
 
 
 
 end
 
 
-#before('/anvandare/:id/delete') do
- #   id = params[:id].to_i
-  #  db = SQLite3::Database.new("db/AD_DATA.db")
-#
-    #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first.first
-
- #   if session[:anv_id] != db.execute("SELECT DISTINCT id FROM Anvandare WHERE id = ?", id).first.first
-  #      hackerman()
-   #     redirect back
-
-    #end
-    
-#end
    
 
 post('/anvandare/:id/delete') do 
@@ -352,49 +310,10 @@ get('/anvandare/new/') do
     slim(:"anvandare/register")
 end
 
-
-post('/anvandare') do
+before('/anvandare') do
 
     if params[:password] == params[:password2] 
-
-        db = SQLite3::Database.new("db/AD_DATA.db")
-        db.results_as_hash = true
-
-        user_name = params[:user_name]
-        tel_nr = params[:tel_nr].to_i
-        password = params[:password]
-
-        password_krypterat=BCrypt::Password.create(password)
-
         
-
-        
-        #p db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
-
-
-        #p db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i
-
-        if db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i == 0
-            
-            db = SQLite3::Database.new("db/AD_DATA.db")
-            db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)           
-
-            flash[:notice] = "Ditt konto har skapats, nu kan du logga in."
-
-            redirect ('/anvandare/login/')
-
-        else
-
-            flash[:notice] = "Användarnamnet #{user_name} är redan upptaget, prova med något annat anv_namn"
-            redirect back
-
-            # det där användarnamnet är redan upptaget, välj något annat. 
-
-        end
-            
-
-
-            
 
     else
         
@@ -402,6 +321,53 @@ post('/anvandare') do
         redirect back
         
     end
+
+end
+
+
+
+
+post('/anvandare') do
+
+   
+
+    #validera input med funktion
+
+
+
+    db = SQLite3::Database.new("db/AD_DATA.db")
+    db.results_as_hash = true
+
+    user_name = params[:user_name]
+    tel_nr = params[:tel_nr]
+    password = params[:password]
+
+    password_krypterat=BCrypt::Password.create(password)
+
+    #p db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
+
+
+    #p db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i
+
+    if db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i == 0
+        
+        db = SQLite3::Database.new("db/AD_DATA.db")
+        db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)           
+
+        flash[:notice] = "Ditt konto har skapats, nu kan du logga in."
+
+        redirect ('/anvandare/login/')
+
+    else
+
+        flash[:notice] = "Användarnamnet #{user_name} är redan upptaget, prova med något annat anv_namn"
+        redirect back
+
+        # det där användarnamnet är redan upptaget, välj något annat. 
+
+    end
+            
+
 end
 
 get('/anvandare/success') do
@@ -429,7 +395,6 @@ end
 
 
 get('/anvandare/:id/edit/') do
-    p "HERES JOHNNY"
     id = params[:id].to_i
     anropa_db
     slim(:"anvandare/edit",locals:{result:edit_usr_form_data(id)})

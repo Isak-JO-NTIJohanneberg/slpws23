@@ -18,6 +18,20 @@ def ej_inlogg_note()
     
 end
 
+def validate_password_note()
+
+    
+    flash[:notice] = "Lösenordet är inte starkt nog, det måste innehålla minst 3 tecken"
+    
+end
+
+def validate_email_note()
+
+    
+    flash[:notice] = "Felaktig e-post adress, ange en adress som innehåller @"
+    
+end
+
 def cooldown_note()
 
 
@@ -45,7 +59,6 @@ end
 
 
 def check_auth_user_or_admin(id)
-
 
     anropa_db()
 
@@ -125,4 +138,52 @@ end
 
 def edit_usr_form_data(id)
     return @db.execute("SELECT DISTINCT anv_namn, kontakt_upg FROM Anvandare WHERE id = ?", id).first
+end
+
+def check_usr_auth(had, needed)
+
+    if had == needed.to_i
+    
+    elsif
+        
+        if session[:anv_id] != nil
+            check_auth_user_or_admin(had)
+        end
+
+    else
+
+        hackerman()
+        redirect back
+
+    end
+end
+
+def inloggad_anv_namn 
+    anropa_db()
+    @db.execute("SELECT DISTINCT anv_namn FROM Anvandare WHERE id = ?", session[:anv_id]).first["anv_namn"]
+end
+
+def validate_email_password(email, password)
+
+    if password.length < 3
+        validate_password_note()
+        return false
+    end
+
+    email.each_char do |tecken|
+        if tecken == "@"
+            return true
+        else 
+        end
+    end
+    validate_email_note()
+    return false
+
+end
+
+#db i models
+
+def savetodb_annonser(rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)
+    @db.execute("INSERT INTO Annonser (rubrik, pris, annons_text, user_owner_id, kattegori_id, bild) VALUES (?,?,?,?,?,?)", rubrik, pris, annonstext, user_id, kattegori, bild_filnamn)  
+    
 end

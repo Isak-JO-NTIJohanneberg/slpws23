@@ -6,7 +6,7 @@ h2 Redigera Användarkonto
 
 form action="/anvandare/#{session[:anv_id]}/update" method="POST" enctype="multipart/form-data"
     input type="text" name="user_name" placeholder="Användarnamn" value=result["anv_namn"]
-    input type="Number" name="tel_nr" placeholder="kontaktupgifter-telefonnummer" value=result["kontakt_upg"]
+    input type="text" name="tel_nr" placeholder="kontaktupgifter-telefonnummer" value=result["kontakt_upg"]
 
 
     input type="password" name="gamla_password" placeholder="Fyll i lösenord"
