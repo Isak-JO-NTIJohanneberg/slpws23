@@ -6,15 +6,12 @@ require "sinatra/reloader"
 require 'sinatra/flash'
 require_relative './model.rb' 
 
+include Funktioner
+
 enable :sessions
 
 
 
-#before do 
-
- #   restricted_path = = []
-
-#end
 before all_of("/mina_annonser/", "/annonser/:id/spara", "/sparade/") do
    
     if session[:anv_id] != nil
@@ -39,12 +36,12 @@ end
 before ("/anvandare/:id/update") do
     check_usr_auth(session[:anv_id], params[:id])     
 end
-# params av routen (params[:id] fungerar inte med "before all_of"), därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
+#params av routen (params[:id] fungerar inte med "before all_of"), därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
 
 
 before all_of2("/anvandare", '/anvandare/*/update') do
 
-    p "en before route"
+    #p "en before route"
     email = params[:tel_nr]
     password = params[:password]
 
@@ -57,7 +54,8 @@ before all_of2("/anvandare", '/anvandare/*/update') do
 
 end
 
-
+# Förstasidan, här ansätts användarnamnet som visas högst upp på sidan 
+# @see Funktioner#inloggad_anv_namn
 get('/') do
     @anv_namn = ""
     if session[:anv_id] != nil
@@ -67,13 +65,8 @@ get('/') do
 end
 
 
-#before do
- #   db = SQLite3::Database.new("db/AD_DATA.db")
-  #  db.results_as_hash = true
-   # result = db.execute("SELECT DISTINCT User_owner_id, id FROM Annonser where id = ?", ?=params )
-#end
-   
-
+# visar alla annonser som finns sparade i databasen, 
+# @see Funktioner#select_annons_data()
 get('/annonser/') do
     #db = SQLite3::Database.new("db/AD_DATA.db")
     #db.results_as_hash = true
@@ -84,6 +77,8 @@ get('/annonser/') do
     slim(:"annonser/index", locals:{result:result})
 end
 
+# Visar ettt formulär där användaren kan skapa en ny annons, välja/skriva in uppgifter om varan.
+# @see Funktioner#select_kattegorier()
 get('/annonser/new') do
     
     anropa_db()
@@ -92,6 +87,13 @@ get('/annonser/new') do
     slim(:"annonser/new", locals:{result:result})
 end
 
+# Här pressenteras all data om en annons, (efter att man har klickat på den)
+# Pris, annonstext, bild, etc. dessutom visas en knapp om användaren vill spara annosnen samt ett räkneverk som visar hur många andra har sparat annonsen.
+# 
+# @see Funktioner#select_all_annons
+# @see Funktioner#select_saved
+# @see Funktioner#no_of_likes
+# @see Funktioner#select_kontakt_upg
 get('/annonser/:id') do
     id = params[:id].to_i
     anropa_db()
@@ -107,7 +109,11 @@ get('/annonser/:id') do
     slim(:"annonser/show", locals:{result:result})
 end
 
-
+# visar annonse skapade av den inloggade användaren (eller admin)
+# 
+# @see Funktioner#admin_or_not
+# @see Funktioner#select_annonser
+# @see Funktioner#select_owner_annonser
 get('/mina_annonser/') do
    
     anropa_db()
@@ -125,6 +131,15 @@ get('/mina_annonser/') do
 
 end
 
+# Sparar en ny annons i databasen
+# 
+# @param [string] rubrik, Rubriken på annonsen
+# @param [interger] pris, prist på varan som säljs
+# @param [string] annonstext, beskrivande text under annonsen
+# @param [interger] kattegori, Nummret (id) på den kattegori som varan tillhör.
+# @param [interger] user_id, id't på användaren som äger annonsen.
+# denna route sparat även en bild i /public/user_bilder om användaren har laddat upp en sådan.
+# @see Funktioner#savetodb_annonser
 post('/annonser') do
     rubrik = params[:titel]
     pris = params[:pris].to_i
@@ -132,7 +147,7 @@ post('/annonser') do
     kattegori = params[:kattegori].to_i
     user_id =  session[:anv_id]
 
-    p user_id
+    #p user_id
     
     if  params[:bilden] != nil
         bild_filnamn = params[:bilden][:filename]
@@ -154,7 +169,12 @@ post('/annonser') do
 end
 
 
-
+# Tar bort en specifik annons från databasen 
+# Tar även bort den reöaterade bilden om sådan finns
+# 
+# @param [integer] id, identifikationsnummret på den annons som ska tas bort.
+# @see Funktioner#delete_image
+# @see Funktioner#ta_veck_annons
 post('/annonser/:id/delete') do    
     id = params[:id].to_i
     anropa_db()
@@ -170,6 +190,10 @@ post('/annonser/:id/delete') do
 end
 
 
+# visar ett ifyllt formulär i vilken användaren kan redigera en annons.
+# 
+# @param [integer] id, identifikationsnummret på den annons som ska ändras.
+# @see Funktioner#select_all_annons
 get('/annonser/:id/edit') do
     id = params[:id].to_i
     anropa_db()
@@ -183,7 +207,15 @@ end
 
 
 
-
+# Updaterar (ändrar) annonsdatan för en annons.
+# 
+# @param [string] rubrik, Rubriken på annonsen
+# @param [interger] pris, prist på varan som säljs
+# @param [string] annonstext, beskrivande text under annonsen
+# @param [interger] kattegori, Nummret (id) på den kattegori som varan tillhör.
+# @param [interger] user_id, id't på användaren som äger annonsen.
+# denna route sparar även en bild i /public/user_bilder om användaren har laddat upp en sådan.
+# @see Funktioner#update_annonser
 post('/annonser/:id/update') do
     id = params[:id].to_i
     rubrik = params[:titel]
@@ -212,6 +244,17 @@ post('/annonser/:id/update') do
 
 end
 
+# redigerar användarens upgifter.
+# ändrar användarnman, e-postadress, och lösenord för en användare i databasen.
+# 
+# @param [string] user_name, användarnamn
+# @param [string] tel_nr, e-postadress
+# @param [string] password, första nya lösenordet
+# @param [string] password2, andra (bekräftelsen) av nya lösenordet
+# @param [string] gamla_password, det gamla lösenordet (krävs för att ändra till ett nytt lösenord.)
+# @see Funktioner#create_new_crypt_password
+# @see Funktioner#update_user_data
+# @see Funktioner#update_user_psw
 post('/anvandare/:id/update') do
 
 
@@ -228,8 +271,8 @@ post('/anvandare/:id/update') do
 
     psw_krypterad = select_psw(id)
     
-    p create_new_crypt_password(psw_krypterad)
-    p gamla_password
+    #p create_new_crypt_password(psw_krypterad)
+    #p gamla_password
     if password == "" 
 
         update_user_data(user_name, tel_nr, id)
@@ -258,7 +301,11 @@ end
 
 
    
-
+# tar bort en användare ifrån databasen
+# tar även bort sesson med sesion.destroy
+# 
+# @param [integer] id, id för anvädaren som ska tas bort
+# @see Funktioner#anv_delete
 post('/anvandare/:id/delete') do 
     id = params[:id].to_i
 
@@ -273,12 +320,15 @@ end
 
 
 
-
+# sparar en favoritannons i relationstabellen.
+# 
+# @param [integer] annons_id, id för annonsen som ska sparas
+# @see Funktioner#saveto_relation
 post('/annonser/:id/spara') do
 
     annons_id = params[:id].to_i
     anv_id = session[:anv_id]
-    p anv_id
+    #p anv_id
     anropa_db()
     saveto_relation(anv_id, annons_id)
     redirect("/annonser/#{annons_id}")
@@ -287,6 +337,10 @@ post('/annonser/:id/spara') do
 
 end
 
+# tar bort en favoritannons ifrån relationstabellen.
+# 
+# @param [integer] annons_id, id för annonsen som ska sparas
+# @see Funktioner#rm_fav
 post('/annonser/:id/rm_fav') do
     annons_id = params[:id].to_i
     anv_id = session[:anv_id]
@@ -301,9 +355,11 @@ post('/annonser/:id/rm_fav') do
     redirect back
 end
 
+# visar ett formulär där en ny användare kan registrera sitt konto.
 get('/anvandare/new/') do
     slim(:"anvandare/register")
 end
+
 
 before('/anvandare') do
 
@@ -321,7 +377,18 @@ end
 
 
 
-
+# Sparar en ny användare i databasen 
+# Kontrollerar om det valda användarnamnet är upptaget, om så är fallet skickas ett felmeddelande.
+# sparar den nya användaren och redirectar sedan till login där användaren kan logga in på sitt nya konto.
+# before routen för denna route validerar lösenordet och e-postadressen.
+#
+# @param [string] user_name, användarnamn
+# @param [string] tel_nr, e-postadress
+# @param [string] password, användarens påhittade lösenorde
+# 
+# @see Funktioner#create_new_crypt_password
+# @see Funktioner#saved_by_user_or_not
+# @see Funktioner#savetodb_anvandare
 post('/anvandare') do
 
    
@@ -357,37 +424,41 @@ post('/anvandare') do
         flash[:notice] = "Användarnamnet #{user_name} är redan upptaget, prova med något annat anv_namn"
         redirect back
 
-        # det där användarnamnet är redan upptaget, välj något annat. 
+        #det där användarnamnet är redan upptaget, välj något annat. 
 
     end
             
 
 end
 
-get('/anvandare/success') do
-
-    slim(:"anvandare/lyckat")
-
-end
 
 
+# visar en lista med en användares alla sparade favoriannonser.
+# 
+# @param [integer] anv_id, id't på den användaren vars favoritannonser ska tas fram.
+# @see Funktioner#select_user_saved_relation
 get('/sparade/') do
 
-        anv_id = session[:anv_id]
-        anropa_db
-        result = select_user_saved_relation()
-        
-        slim(:"sparade/index", locals:{result:result})
+    anv_id = session[:anv_id]
+    anropa_db
+    result = select_user_saved_relation()
+    
+    slim(:"sparade/index", locals:{result:result})
                     
 end
 
+
+# visar ett litet formulär där anvädaren kan logga in.
+# här kan användaren skriva sinn anv-namn och lösenord.
 get('/anvandare/login/') do
     slim(:"anvandare/login")
 end
 
 
 
-
+# Ett ifyllt formulär där användaren kan redigera sina användar uppgifter (namn, mailadress, och lösenord.)
+# 
+# @params [integer] id, id nummer på det användarkonto som ska redigeras
 get('/anvandare/:id/edit/') do
     id = params[:id].to_i
     anropa_db
@@ -395,6 +466,9 @@ get('/anvandare/:id/edit/') do
     slim(:"anvandare/edit",locals:{result:edit_usr_form_data(id)})
 end
 
+# här kan man logga ut.
+# 
+# @see Funktioner#utloggad
 get('/anvandare/logout/') do
     utloggad()
     redirect('/anvandare/login/')
@@ -407,7 +481,13 @@ before('/anvandare/login') do
 
 end
 
-
+# Kontrollerar om inloggningsuppgifterna stämmer med de sparade uppgifterna i databasen.
+# ansätter även session[:inlogg_tid] tinn nuvarande tid, med syfte att möjliggöra cooldown.
+#
+# @param [string] user_name, användarnamnet som angavs i inlogg-formuläret. 
+# @param [string] password, lösenordet som angavs i inlogg-formuläret. 
+# @see Funktioner#select_user_login
+# @see Funktioner#check_psw
 post('/anvandare/login') do
         
     session[:inlogg_tid] = Time.new
