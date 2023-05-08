@@ -23,7 +23,7 @@ form action="/anvandare/#{session[:anv_id]}/update" method="POST" enctype="multi
     input type="submit" value="Redigera Kontot"  
 
 
-form method="post" action="/anvandare/#{session[:anv_id]}/delete"
+form method="post" action="/anvandare/#{@delete_id}/delete"
         input type="submit" value="Ta bort Kontot"
 
 

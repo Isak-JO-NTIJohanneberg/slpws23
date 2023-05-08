@@ -79,7 +79,8 @@ get('/annonser/') do
     #db.results_as_hash = true
     anropa_db()
 
-    result = @db.execute("SELECT DISTINCT rubrik, id, pris FROM Annonser")
+    result = select_annons_data()
+
     slim(:"annonser/index", locals:{result:result})
 end
 
@@ -87,7 +88,7 @@ get('/annonser/new') do
     
     anropa_db()
 
-    result = @db.execute("SELECT * FROM Kattegorier")
+    result = select_kattegorier()
     slim(:"annonser/new", locals:{result:result})
 end
 
@@ -95,13 +96,13 @@ get('/annonser/:id') do
     id = params[:id].to_i
     anropa_db()
 
-    result = @db.execute("SELECT * FROM Annonser WHERE id = ?",id).first
+    result = select_all_annons(id)
     if session[:anv_id] != nil
-        @anv_sparade = @db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
+        @anv_sparade = select_saved()
     end
-    @antal_lajks = @db.execute("SELECT COUNT (Annons_id) FROM User_saved_relation WHERE Annons_id = ?", id).first
+    @antal_lajks = no_of_likes(id)
 
-    @kontakt = @db.execute("SELECT kontakt_upg FROM Anvandare WHERE id IN (SELECT User_owner_id FROM Annonser WHERE id = ?)", id).first["kontakt_upg"]
+    @kontakt = select_kontakt_upg(id)
 
     slim(:"annonser/show", locals:{result:result})
 end
@@ -111,13 +112,13 @@ get('/mina_annonser/') do
    
     anropa_db()
 
-    if @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", session[:anv_id]).first["admin"] == 1
+    if admin_or_not()
 
-        result = @db.execute("SELECT * FROM Annonser")
+        result = select_annonser()
 
 
     else 
-        result = @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+        result = select_owner_annonser()
 
     end
     slim(:"hantera_annonser/index", locals:{result:result})
@@ -161,12 +162,7 @@ post('/annonser/:id/delete') do
     #p @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id)
 
 
-    if @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id).first["bild"] != nil 
-        bild_filnamn = @db.execute("SELECT DISTINCT bild FROM Annonser WHERE id = ?", id).first["bild"]
-
-        File.delete("./public/user_bilder/#{bild_filnamn}")
-
-    end
+    delete_image(id)
 
     ta_veck_annons(id)
  
@@ -176,10 +172,8 @@ end
 
 get('/annonser/:id/edit') do
     id = params[:id].to_i
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    result = db.execute("SELECT * FROM Annonser WHERE id = ?", id).first
-    @kattegorier = db.execute("SELECT * FROM Kattegorier")
+    anropa_db()
+    result = select_all_annons(id)
 
     #p db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
@@ -207,12 +201,12 @@ post('/annonser/:id/update') do
         end
     end
     
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
+    anropa_db
 
-    p db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+    #p db.execute("SELECT DISTINCT User_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
 
-    db.execute("UPDATE Annonser SET rubrik=?, pris=?, annons_text=?, kattegori_id=?, bild=? WHERE id=?", rubrik, pris, annonstext, kattegori, bild_filnamn, id)  
+    update_annonser(rubrik, pris, annonstext, kattegori, bild_filnamn, id)
+    
     redirect("/mina_annonser/")
    
 
@@ -226,37 +220,38 @@ post('/anvandare/:id/update') do
     user_name = params[:user_name]
     tel_nr = params[:tel_nr]
     password = params[:password]
+    password2 = params[:password2]
+    gamla_password = params[:gamla_password]
 
+
+    anropa_db()
+
+    psw_krypterad = select_psw(id)
     
+    p create_new_crypt_password(psw_krypterad)
+    p gamla_password
+    if password == "" 
 
+        update_user_data(user_name, tel_nr, id)
 
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
-    psw_krypterad = db.execute("SELECT DISTINCT Losenord FROM Anvandare WHERE id = ?", id).first["losenord"]
+    elsif password == password2 && psw_check(gamla_password, psw_krypterad)
 
-    if params[:password] == nil 
+        password_krypterat = create_new_crypt_password(password)
 
-        db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, WHERE id=?", user_name, tel_nr, id)
-
-    elsif params[:password] == params[:password2] && password_okrypterat=BCrypt::Password.new(psw_krypterad) == params[:gamla_password]
-
-        password_krypterat=BCrypt::Password.create(password)
-        db.execute("UPDATE Anvandare SET anv_namn=?, kontakt_upg=?, losenord=? WHERE id=?", user_name, tel_nr, password_krypterat, id)  
+        update_user_psw(user_name, tel_nr, password_krypterat, id) 
         
-        redirect back
 
 
     else 
 
 
         flash[:notice] = "Du angav fel lösenord."
-        redirect back
 
 
 
     end
 
-
+    redirect back
 
 
 end
@@ -284,8 +279,8 @@ post('/annonser/:id/spara') do
     annons_id = params[:id].to_i
     anv_id = session[:anv_id]
     p anv_id
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.execute("INSERT INTO User_saved_relation (anv_id, annons_id) VALUES (?,?)", anv_id, annons_id)
+    anropa_db()
+    saveto_relation(anv_id, annons_id)
     redirect("/annonser/#{annons_id}")
     redirect back
 
@@ -295,9 +290,9 @@ end
 post('/annonser/:id/rm_fav') do
     annons_id = params[:id].to_i
     anv_id = session[:anv_id]
-    db = SQLite3::Database.new("db/AD_DATA.db")
+    anropa_db
     if anv_id != nil
-        db.execute("DELETE FROM User_saved_relation WHERE annons_id = ? AND anv_id =?", annons_id, anv_id)
+        rm_fav(annons_id, anv_id)
     else
         hackerman()
         redirect back
@@ -335,24 +330,23 @@ post('/anvandare') do
 
 
 
-    db = SQLite3::Database.new("db/AD_DATA.db")
-    db.results_as_hash = true
+    anropa_db
 
     user_name = params[:user_name]
     tel_nr = params[:tel_nr]
     password = params[:password]
 
-    password_krypterat=BCrypt::Password.create(password)
+    password_krypterat = create_new_crypt_password(password)
 
     #p db.execute("SELECT anv_namn from Anvandare WHERE id = ? AND anv_namn = ?", i, user_name)["anv_namn"]
 
 
     #p db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i
 
-    if db.execute("SELECT COUNT (id) FROM Anvandare WHERE anv_namn = ?", user_name).first["COUNT (id)"].to_i == 0
+    if saved_by_user_or_not(user_name)
         
-        db = SQLite3::Database.new("db/AD_DATA.db")
-        db.execute("INSERT INTO Anvandare (anv_namn, kontakt_upg, losenord) VALUES (?,?,?)", user_name, tel_nr, password_krypterat)           
+        anropa_db()
+        savetodb_anvandare(user_name, tel_nr, password_krypterat)
 
         flash[:notice] = "Ditt konto har skapats, nu kan du logga in."
 
@@ -381,8 +375,8 @@ get('/sparade/') do
 
         anv_id = session[:anv_id]
         anropa_db
-        result = @db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
-
+        result = select_user_saved_relation()
+        
         slim(:"sparade/index", locals:{result:result})
                     
 end
@@ -397,6 +391,7 @@ end
 get('/anvandare/:id/edit/') do
     id = params[:id].to_i
     anropa_db
+    @delete_id = id
     slim(:"anvandare/edit",locals:{result:edit_usr_form_data(id)})
 end
 
