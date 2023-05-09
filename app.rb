@@ -78,7 +78,7 @@ get('/annonser/') do
 end
 
 # Visar ettt formulär där användaren kan skapa en ny annons, välja/skriva in uppgifter om varan.
-# @see Funktioner#select_kattegorier()
+# @see Funktioner#select_kattegorier
 get('/annonser/new') do
     
     anropa_db()
@@ -134,10 +134,10 @@ end
 # Sparar en ny annons i databasen
 # 
 # @param [string] rubrik, Rubriken på annonsen
-# @param [interger] pris, prist på varan som säljs
+# @param [integer] pris, prist på varan som säljs
 # @param [string] annonstext, beskrivande text under annonsen
-# @param [interger] kattegori, Nummret (id) på den kattegori som varan tillhör.
-# @param [interger] user_id, id't på användaren som äger annonsen.
+# @param [integer] kattegori, Nummret (id) på den kattegori som varan tillhör.
+# @param [integer] user_id, id't på användaren som äger annonsen.
 # denna route sparat även en bild i /public/user_bilder om användaren har laddat upp en sådan.
 # @see Funktioner#savetodb_annonser
 post('/annonser') do
@@ -210,10 +210,10 @@ end
 # Updaterar (ändrar) annonsdatan för en annons.
 # 
 # @param [string] rubrik, Rubriken på annonsen
-# @param [interger] pris, prist på varan som säljs
+# @param [integer] pris, prist på varan som säljs
 # @param [string] annonstext, beskrivande text under annonsen
-# @param [interger] kattegori, Nummret (id) på den kattegori som varan tillhör.
-# @param [interger] user_id, id't på användaren som äger annonsen.
+# @param [integer] kattegori, Nummret (id) på den kattegori som varan tillhör.
+# @param [integer] user_id, id't på användaren som äger annonsen.
 # denna route sparar även en bild i /public/user_bilder om användaren har laddat upp en sådan.
 # @see Funktioner#update_annonser
 post('/annonser/:id/update') do
@@ -458,7 +458,7 @@ end
 
 # Ett ifyllt formulär där användaren kan redigera sina användar uppgifter (namn, mailadress, och lösenord.)
 # 
-# @params [integer] id, id nummer på det användarkonto som ska redigeras
+# @param [integer] id, id nummer på det användarkonto som ska redigeras
 get('/anvandare/:id/edit/') do
     id = params[:id].to_i
     anropa_db
