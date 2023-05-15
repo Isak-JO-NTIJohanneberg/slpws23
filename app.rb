@@ -326,12 +326,16 @@ end
 # @see Funktioner#saveto_relation
 post('/annonser/:id/spara') do
 
-    annons_id = params[:id].to_i
-    anv_id = session[:anv_id]
-    #p anv_id
-    anropa_db()
-    saveto_relation(anv_id, annons_id)
-    redirect("/annonser/#{annons_id}")
+    if session[:anv_id] != nil
+        annons_id = params[:id].to_i
+        anv_id = session[:anv_id]
+        #p anv_id
+        anropa_db()
+        saveto_relation(anv_id, annons_id)
+        redirect("/annonser/#{annons_id}")
+    else
+        ej_inlogg_note()
+    end
     redirect back
 
 
