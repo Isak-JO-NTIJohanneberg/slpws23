@@ -72,14 +72,46 @@ module Funktioner
     def check_auth_user_or_admin(id)
 
         anropa_db()
-        if session[:anv_id] == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
-            return true
 
-        elsif session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
-            return true
+        if session[:anv_id] != nil
 
+            if session[:anv_id] == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
+                return true
+
+            elsif session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+                return true
+
+            else 
+                return false
+
+            end
         else 
-            return false
+
+            return false 
+
+        end
+
+    end
+
+    # Kontrollerar om den inloggade användaren har redigeringsbehörighet till ett konto.
+    # Kontrollerar om den inloggade användaren är ägeren till kontot, eller om den inloggade användaren är admin.
+    # @return [boolean]
+    def check_auth_if_admin(id)
+
+        anropa_db()
+
+        if session[:anv_id] != nil
+
+            if session[:anv_id] == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
+                return true
+
+            else 
+                return false
+
+            end
+        else 
+
+            return false 
 
         end
 
@@ -172,11 +204,16 @@ module Funktioner
 
         if had == needed.to_i
         
-        elsif
+        elsif session[:anv_id] != nil
             
-            if session[:anv_id] != nil
-                check_auth_user_or_admin(needed)
+         
+            if check_auth_if_admin(needed.to_i)
+
+            else
+                hackerman()
+                redirect back
             end
+        
 
         else
 
