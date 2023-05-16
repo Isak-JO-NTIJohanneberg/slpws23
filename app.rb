@@ -26,17 +26,29 @@ before all_of("/mina_annonser/", "/annonser/:id/spara", "/sparade/") do
 end
 
 # kontrollerar att användaren (eller administratören) som försöker komma åt dessa routes är ägare av kontot eller är admin.
-#params av routen (params[:id]) fungerar inte med "before all_of", därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
+#params av routen (params[:id]) fungerar inte med "before all_of", därföe har jag tre identiska before routes, inte DRY, men enda lösningen för att få det att fungera. 
 before ("/anvandare/:id/edit/") do
-    check_usr_auth(session[:anv_id], params[:id])  
+    if check_usr_auth(session[:anv_id], params[:id], session[:anv_id]) 
+    else
+        hackerman()
+        redirect back
+    end 
 end
 
 before ("/anvandare/:id/delete") do
-    check_usr_auth(session[:anv_id], params[:id])    
+    if check_usr_auth(session[:anv_id], params[:id], session[:anv_id]) 
+    else
+        hackerman()
+        redirect back
+    end     
 end
 
 before ("/anvandare/:id/update") do
-    check_usr_auth(session[:anv_id], params[:id])     
+    if check_usr_auth(session[:anv_id], params[:id], session[:anv_id]) 
+    else
+        hackerman()
+        redirect back
+    end  
 end
 
 # validerar input från formulären (längd på lösenord samt @ i e-mail) då en användare skapar ett konto eller redigerar kontot.
@@ -60,7 +72,7 @@ end
 get('/') do
     @anv_namn = ""
     if session[:anv_id] != nil
-        @anv_namn = inloggad_anv_namn
+        @anv_namn = inloggad_anv_namn(session[:anv_id])
     end
     slim(:main)
 end
@@ -101,7 +113,7 @@ get('/annonser/:id') do
 
     result = select_all_annons(id)
     if session[:anv_id] != nil
-        @anv_sparade = select_saved()
+        @anv_sparade = select_saved(session[:anv_id])
     end
     @antal_lajks = no_of_likes(id)
 
@@ -119,13 +131,13 @@ get('/mina_annonser/') do
    
     anropa_db()
 
-    if admin_or_not()
+    if admin_or_not(session[:anv_id])
 
         result = select_annonser()
 
 
     else 
-        result = select_owner_annonser()
+        result = select_owner_annonser(session[:anv_id])
 
     end
     slim(:"hantera_annonser/index", locals:{result:result})
@@ -444,7 +456,7 @@ get('/sparade/') do
 
     anv_id = session[:anv_id]
     anropa_db
-    result = select_user_saved_relation()
+    result = select_user_saved_relation(session[:anv_id])
     
     slim(:"sparade/index", locals:{result:result})
                     
@@ -474,6 +486,7 @@ end
 # 
 # @see Funktioner#utloggad
 get('/anvandare/logout/') do
+    session.destroy
     utloggad()
     redirect('/anvandare/login/')
 end
@@ -481,7 +494,13 @@ end
 
 before('/anvandare/login') do
 
-    cooldown
+    if session[:inlogg_tid] != nil
+        if session[:inlogg_tid]+10 > Time.new
+            cooldown_note()
+            redirect('/anvandare/login/')
+        end
+
+    end
 
 end
 

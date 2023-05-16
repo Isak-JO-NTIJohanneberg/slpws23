@@ -47,7 +47,6 @@ module Funktioner
 
 
         flash[:notice] = "Vänta 10 sekunder innan du försöker logga in igen."
-        redirect('/anvandare/login/')
 
 
 
@@ -57,28 +56,23 @@ module Funktioner
     # Om så är fallet avböjd inloggningsförsöket och användaren får ett felmeddelande
     # @see Funktioner#cooldown_note
     def cooldown()
-        if session[:inlogg_tid] != nil
-            if session[:inlogg_tid]+10 > Time.new
-                cooldown_note()
-            end
 
-        end
     end
 
     # Kontrollerar om den inloggade användaren har redigeringsbehörighet till en annons.
     # Kontrollerar om den inloggade användaren är ägeren till annonsen, eller om den inloggade användaren är admin.
     # @return [boolean]
     # @param [integer], användarid som krävs för återgärden. 
-    def check_auth_user_or_admin(id)
+    def check_auth_user_or_admin(id, anv_id)
 
         anropa_db()
 
-        if session[:anv_id] != nil
+        if anv_id != nil
 
-            if session[:anv_id] == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
+            if anv_id == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
                 return true
 
-            elsif session[:anv_id] == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
+            elsif anv_id == @db.execute("SELECT DISTINCT user_owner_id FROM Annonser WHERE id = ?", id).first["user_owner_id"]
                 return true
 
             else 
@@ -96,13 +90,13 @@ module Funktioner
     # Kontrollerar om den inloggade användaren har redigeringsbehörighet till ett konto.
     # Kontrollerar om den inloggade användaren är ägeren till kontot, eller om den inloggade användaren är admin.
     # @return [boolean]
-    def check_auth_if_admin(id)
+    def check_auth_if_admin(id, anv_id)
 
         anropa_db()
 
-        if session[:anv_id] != nil
+        if anv_id != nil
 
-            if session[:anv_id] == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
+            if anv_id == @db.execute("SELECT DISTINCT id FROM Anvandare WHERE admin = 1").first["id"]
                 return true
 
             else 
@@ -146,10 +140,9 @@ module Funktioner
     end
 
     # Loggar ut från kontot.
-    # avslutar aktiva browser-sessions och ger ett bekräftelsemeddelande åt användaren där den har loggat ut. 
+    # ger ett bekräftelsemeddelande åt användaren där den har loggat ut. 
     def utloggad()
 
-        session.destroy
         flash[:notice] = "Du har loggat ut!"
 
 
@@ -200,25 +193,27 @@ module Funktioner
     # @see Funktioner#hackerman
     # @param [integer] had idt som använadren har
     # @param [integer] needed idt krävs för att få åtkomst till sidan
-    def check_usr_auth(had, needed)
+    # @return [boolean]
+    def check_usr_auth(had, needed, anv_id)
 
         if had == needed.to_i
+
+            return true
         
-        elsif session[:anv_id] != nil
+        elsif anv_id != nil
             
          
-            if check_auth_if_admin(needed.to_i)
+            if check_auth_if_admin(needed.to_i, anv_id)
+                return true
 
             else
-                hackerman()
-                redirect back
+                return false
             end
         
 
         else
 
-            hackerman()
-            redirect back
+            return false
 
         end
     end
@@ -226,9 +221,9 @@ module Funktioner
     # tar fram namnet på den användare som är inloggad för tillfället. 
     # namnet pressenteras sedan högst upp på sidan.
     # @return [string]
-    def inloggad_anv_namn 
+    def inloggad_anv_namn(anv_id)
         anropa_db()
-        @db.execute("SELECT DISTINCT anv_namn FROM Anvandare WHERE id = ?", session[:anv_id]).first["anv_namn"]
+        @db.execute("SELECT DISTINCT anv_namn FROM Anvandare WHERE id = ?", anv_id).first["anv_namn"]
     end
 
     # validerar lösenordet och e-postadressen, 
@@ -373,8 +368,8 @@ module Funktioner
 
     # hämtar all annonsdata från de annonser som den inloggade användaren har sparat.
     # @return [array]
-    def select_user_saved_relation()
-        return @db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]})")
+    def select_user_saved_relation(anv_id)
+        return @db.execute("SELECT * FROM Annonser WHERE id IN (SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{anv_id})")
     end
 
     # Hämtar rubrik, id och pris från alla annonser.
@@ -395,8 +390,8 @@ module Funktioner
     # Hämtar id på de annonser som den nuvarande användaren har sparat i sin favoritlista.
     # används på "sparade annonser" där användare n kan bläddra bland de annonser som den har sparat.
     # @return [array]
-    def select_saved()
-        return @db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{session[:anv_id]}")
+    def select_saved(anv_id)
+        return @db.execute("SELECT Annons_id FROM User_saved_relation WHERE anv_id = #{anv_id}")
     end
 
     # Räknar antalet användare som har sparat en specifik annons i relationstabellen.
@@ -418,8 +413,8 @@ module Funktioner
 
     # kontrollerar om den inloggade användaren är administratör. 
     # @return [boolean]
-    def admin_or_not()
-        return @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", session[:anv_id]).first["admin"] == 1
+    def admin_or_not(anv_id)
+        return @db.execute("SELECT DISTINCT admin FROM Anvandare WHERE id = ?", anv_id).first["admin"] == 1
     end
 
     # Hämtar all data om alla annonser
@@ -434,8 +429,8 @@ module Funktioner
     # Hämtar all data om de annonser som den inloggade användaren äger.
     # detta använs på "hantera mina annonser" - sidan.
     # @return [array]
-    def select_owner_annonser()
-        return @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", session[:anv_id])
+    def select_owner_annonser(anv_id)
+        return @db.execute("SELECT * FROM Annonser WHERE user_owner_id = ?", anv_id)
     end
 
     # returnerar ett ett krypterat och saltat lösenord, med ett okrypterar lösenord som argument. 
