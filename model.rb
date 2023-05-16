@@ -454,5 +454,6 @@ module Funktioner
         password_okrypterat=BCrypt::Password.new(psw_krypterad) == gamla_password
 
     end
+    
 
 end

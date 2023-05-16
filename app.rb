@@ -36,7 +36,7 @@ end
 before ("/anvandare/:id/update") do
     check_usr_auth(session[:anv_id], params[:id])     
 end
-#params av routen (params[:id] fungerar inte med "before all_of"), därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
+#params av routen (params[:id]) fungerar inte med "before all_of", därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
 
 
 before all_of2("/anvandare", '/anvandare/*/update') do
@@ -258,7 +258,7 @@ end
 post('/anvandare/:id/update') do
 
 
-    id = session[:anv_id]
+    id = params[:id]
         
     user_name = params[:user_name]
     tel_nr = params[:tel_nr]
@@ -321,7 +321,6 @@ end
 
 
 # sparar en favoritannons i relationstabellen.
-# 
 # @param [integer] annons_id, id för annonsen som ska sparas
 # @see Funktioner#saveto_relation
 post('/annonser/:id/spara') do
@@ -342,7 +341,6 @@ post('/annonser/:id/spara') do
 end
 
 # tar bort en favoritannons ifrån relationstabellen.
-# 
 # @param [integer] annons_id, id för annonsen som ska sparas
 # @see Funktioner#rm_fav
 post('/annonser/:id/rm_fav') do
@@ -465,6 +463,7 @@ end
 # @param [integer] id, id nummer på det användarkonto som ska redigeras
 get('/anvandare/:id/edit/') do
     id = params[:id].to_i
+    @edit_id = id
     anropa_db
     @delete_id = id
     slim(:"anvandare/edit",locals:{result:edit_usr_form_data(id)})
