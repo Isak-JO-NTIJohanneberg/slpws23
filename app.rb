@@ -11,7 +11,7 @@ include Funktioner
 enable :sessions
 
 
-
+# en before route som kontrollerar att användaren är inloggad, om användaren inte är inloggad avvisar den försöket och ger ett felmeddelande ("du måste vara inloggad för att utför den här åtegärden.")
 before all_of("/mina_annonser/", "/annonser/:id/spara", "/sparade/") do
    
     if session[:anv_id] != nil
@@ -25,6 +25,8 @@ before all_of("/mina_annonser/", "/annonser/:id/spara", "/sparade/") do
 
 end
 
+# kontrollerar att användaren (eller administratören) som försöker komma åt dessa routes är ägare av kontot eller är admin.
+#params av routen (params[:id]) fungerar inte med "before all_of", därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
 before ("/anvandare/:id/edit/") do
     check_usr_auth(session[:anv_id], params[:id])  
 end
@@ -36,9 +38,8 @@ end
 before ("/anvandare/:id/update") do
     check_usr_auth(session[:anv_id], params[:id])     
 end
-#params av routen (params[:id]) fungerar inte med "before all_of", därföe har jag tre identiska before routes, inte dry, men enda lösningen för att få det att fungera. 
 
-
+# validerar input från formulären (längd på lösenord samt @ i e-mail) då en användare skapar ett konto eller redigerar kontot.
 before all_of2("/anvandare", '/anvandare/*/update') do
 
     #p "en before route"
